@@ -65,12 +65,12 @@ impl MenusCache {
         };
     }
 
-    pub async fn get_menu(
+    pub async fn get_name_and_menu(
         &mut self,
         restaurant_code: RestaurantCode,
         menu_type: &MenuType,
         weekday: Weekday,
-    ) -> Option<Menu> {
+    ) -> Option<(String, Menu)> {
         if !self.menus.contains_key(&restaurant_code) {
             self.search(restaurant_code).await;
         }
@@ -79,14 +79,11 @@ impl MenusCache {
 
         for menu in menus {
             if menu.weekday == weekday && &menu.menu_type == menu_type {
-                return Some(menu.clone());
+                let name = self.names.get(&restaurant_code)?;
+                return Some((name.clone(), menu.clone()));
             }
         }
 
         None
-    }
-
-    pub fn get_restaurant_name(&self, restaurant_code: RestaurantCode) -> Option<&String> {
-        self.names.get(&restaurant_code)
     }
 }

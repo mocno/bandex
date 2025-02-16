@@ -28,7 +28,7 @@ const COLOR_HIERARCHY: [u8; 3] = [147, 183, 219];
 /// Cria e mostra a logo do Bandex
 ///
 /// Ref.: https://patorjk.com/software/taag/#p=display&f=Doom&t=Bandex
-pub fn display_logo(with_colors: bool) {
+fn display_logo(with_colors: bool) {
     let reset = "\x1b[0m";
     let version = env!("CARGO_PKG_VERSION");
 
@@ -88,14 +88,15 @@ async fn display_menus_by_type(
     print_title(menu_type.to_string(), 1);
 
     for code in restaurant_codes {
-        let menu = match menus_cache.get_menu(*code, menu_type, weekday).await {
-            Some(menu) => menu,
-            None => continue,
-        };
-
-        let restaurant_name = match menus_cache.get_restaurant_name(*code) {
-            Some(name) => name,
-            None => continue,
+        let (restaurant_name, menu) = match menus_cache
+            .get_name_and_menu(*code, menu_type, weekday)
+            .await
+        {
+            Some((name, menu)) => (name, menu),
+            None => {
+                println!("   Erro: Não foi possível carregar esse cardápio (Rest {code})");
+                continue;
+            }
         };
 
         print_title(restaurant_name.clone(), 2);

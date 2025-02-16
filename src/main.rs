@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use display::display_all_menus;
 use types::RestaurantCode;
 
