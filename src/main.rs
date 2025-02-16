@@ -15,7 +15,7 @@ const RESTAURANT_CENTRAL: RestaurantCode = 6;
 
 #[tokio::main]
 async fn main() {
-    let (menu_type, everything, weekday) = cli::cli().await;
+    let (menu_type, everything, weekday) = cli::cli();
 
     let restaurant_codes = [
         RESTAURANT_CENTRAL,

@@ -55,7 +55,7 @@ fn get_menu_type_by_datetime(time: NaiveTime) -> Option<MenuType> {
     }
 }
 
-pub async fn cli() -> (Option<MenuType>, bool, Option<Weekday>) {
+pub fn cli() -> (Option<MenuType>, bool, Option<Weekday>) {
     let cli = Cli::parse();
 
     if cli.weekday != None && cli.everything {
