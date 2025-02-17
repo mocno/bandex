@@ -1,11 +1,10 @@
 use crate::types::MenuType;
-
-use chrono::{Local, NaiveTime, Weekday};
+use chrono::{Datelike, Local, NaiveTime, Weekday};
 use clap::Parser;
 
-// Custom parser function for chrono::Weekday
+/// Ler dia da semana a partir de um numero na string (segunda: 1, terça: 2, ..., domingo: 7)
 fn parse_weekday(s: &str) -> Result<Weekday, String> {
-    match s.to_lowercase().as_str() {
+    match s {
         "1" => Ok(Weekday::Mon),
         "2" => Ok(Weekday::Tue),
         "3" => Ok(Weekday::Wed),
@@ -41,6 +40,12 @@ struct Cli {
     everything: bool,
 }
 
+/// Retorna o tipo da refeição com base na hora atual.
+///
+/// O valor de retorno depende do horário atual:
+/// - Almoço: retorna `Some(MenuType::Lunch)` entre  6:00 e 14:00
+/// - Janta: retorna `Some(MenuType::Dinner)` entre 14:00 e 20:00
+/// - Todos: retorna `None` entre 20:00 e  6:00
 fn get_menu_type_by_datetime(time: NaiveTime) -> Option<MenuType> {
     let lunch_start = NaiveTime::from_hms_opt(6, 0, 0)?;
     let lunch_end_and_dinner_start = NaiveTime::from_hms_opt(14, 0, 0)?;
@@ -55,11 +60,18 @@ fn get_menu_type_by_datetime(time: NaiveTime) -> Option<MenuType> {
     }
 }
 
-pub fn cli() -> (Option<MenuType>, bool, Option<Weekday>) {
+/// Lê os parâmetros de linha de comando e os intepreta extraindo:
+/// - O horário da refeição que se busca
+///     - `Some(time)`: se o usuário especificou um horário específico
+///     - `None`: se o usuário não escolheu um horário (ou seja, todos os horários)
+/// - O dia da semana escolhido:
+///     - `Some(weekday)`: se o usuário especificou um dia
+///     - `None`: se o usuário não quer todos os dias da semana
+pub fn cli() -> Result<(Option<MenuType>, Option<Weekday>), &'static str> {
     let cli = Cli::parse();
 
     if cli.weekday != None && cli.everything {
-        panic!("Escolha mostrar um dia especifico (-d <WEEKDAY>) ou todos os dias (-E)");
+        return Err("Escolha mostrar um dia especifico (-d <WEEKDAY>) ou todos os dias (-E)");
     }
 
     let current_time = Local::now().time();
@@ -71,5 +83,11 @@ pub fn cli() -> (Option<MenuType>, bool, Option<Weekday>) {
         _ => None,
     };
 
-    (menu_type, cli.everything, cli.weekday)
+    let weekday = match (cli.everything, cli.weekday) {
+        (false, Some(weekday)) => Some(weekday),
+        (false, None) => Some(Local::now().naive_local().weekday()),
+        (true, _) => None,
+    };
+
+    Ok((menu_type, weekday))
 }

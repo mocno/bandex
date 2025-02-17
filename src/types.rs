@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
-use chrono::Weekday;
-
 use crate::parse_dwr;
+use chrono::Weekday;
+use std::collections::HashMap;
 
 /// ID do restaurate
 pub type RestaurantCode = usize;
@@ -10,38 +8,42 @@ pub type RestaurantCode = usize;
 /// Tipos de refeição
 #[derive(Debug, PartialEq, Clone)]
 pub enum MenuType {
-    Dinner,
+    /// Almoço
     Lunch,
+    /// Janta
+    Dinner,
 }
 
 impl ToString for MenuType {
     fn to_string(&self) -> String {
         match self {
-            MenuType::Dinner => "Janta".to_string(),
-            MenuType::Lunch => "Almoço".to_string(),
+            MenuType::Dinner => "Janta",
+            MenuType::Lunch => "Almoço",
         }
+        .to_string()
     }
 }
 
 /// Cardápio do dia
 #[derive(Debug, Clone)]
 pub struct Menu {
-    /// Conteúdo da refeição (cdpdia)
+    /// Conteúdo da refeição
     pub content: String,
 
-    /// Tipo da refeição, por exemplo: janta ou almoço (tiprfi)
+    /// Tipo da refeição, por exemplo: janta ou almoço
     pub menu_type: MenuType,
 
-    /// Dia da semana da refeição (Domingo: 1, Segunda: 2, ..., Sabado: 7) (diasemana)
+    /// Dia da semana da refeição (Domingo: 1, Segunda: 2, ..., Sabado: 7)
     pub weekday: Weekday,
 
-    /// Valor Calórico da refeição (vlrclorfi)
+    /// Valor Calórico da refeição
     pub calorific_value: Option<usize>,
 
-    /// Observações do refeição (obscdpsmn)
+    /// Observações do refeição
     pub observation: String,
 }
 
+/// Cache para as refeições e os nomes dos restaurantes
 #[derive(Debug)]
 pub struct MenusCache {
     menus: HashMap<RestaurantCode, Vec<Menu>>,

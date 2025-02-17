@@ -1,5 +1,6 @@
 use crate::parse_dwr;
 
+/// Listar todos os restaurantes
 #[allow(dead_code)]
 pub async fn get_all_rest() {
     let mut current_code = 1;

@@ -1,6 +1,5 @@
-use chrono::{Datelike, Local, Weekday};
-
 use crate::types::{MenuType, MenusCache, RestaurantCode};
+use chrono::Weekday;
 
 /// Dias da semana
 const WEEKDAYS: [Weekday; 5] = [
@@ -23,11 +22,14 @@ const WEEKDAY_NAMES: [&str; 7] = [
 ];
 
 /// Hierarquia de cores para os títulos
+///
+/// Essas cores são usadas para diferenciar os níveis de hierarquia dos títulos
+/// na função display::display_title.
 const COLOR_HIERARCHY: [u8; 3] = [147, 183, 219];
 
 /// Cria e mostra a logo do Bandex
 ///
-/// Ref.: https://patorjk.com/software/taag/#p=display&f=Doom&t=Bandex
+/// Ref.: <https://patorjk.com/software/taag/#p=display&f=Doom&t=Bandex>
 fn display_logo(with_colors: bool) {
     let reset = "\x1b[0m";
     let version = env!("CARGO_PKG_VERSION");
@@ -66,6 +68,10 @@ fn display_logo(with_colors: bool) {
     );
 }
 
+/// Gera e mostra um título colorido e posicionado a partir do seu "nível"
+///
+/// * `title`: Título a ser exibido.
+/// * `level`: Nível de hierarquia do título, um número inteiro entre [0, 2].
 fn print_title(title: String, level: usize) {
     let color = format!("\x1b[38;5;{}m", COLOR_HIERARCHY[level as usize]);
     let reset = "\x1b[0m";
@@ -79,6 +85,10 @@ fn print_title(title: String, level: usize) {
 }
 
 /// Mostra uma refeição de um dia da semana específico.
+/// * `menus_cache`: Cache dos cardápios.
+/// * `restaurant_codes`: Lista dos restaurantes pedidos.
+/// * `menu_type`: Tipo de refeição a ser exibido.
+/// * `weekday`: Dia da semana a ser exibido.
 async fn display_menus_by_type(
     menus_cache: &mut MenusCache,
     restaurant_codes: &Vec<RestaurantCode>,
@@ -115,6 +125,12 @@ async fn display_menus_by_type(
 }
 
 /// Mostra todas as refeições para um dia da semana específico.
+/// * `menus_cache`: Cache dos cardápios.
+/// * `restaurant_codes`: Lista dos restaurantes pedidos.
+/// * `menu_type`: Tipo de refeição a ser exibido.
+///     * `Some(menu_type)`: Mostra apenas as refeições do tipo especificado.
+///     * `None`: Mostra todas as refeições.
+/// * `weekday`: Dia da semana a ser exibido.
 async fn display_menus_of_day(
     menus_cache: &mut MenusCache,
     restaurant_codes: &Vec<RestaurantCode>,
@@ -133,9 +149,16 @@ async fn display_menus_of_day(
     }
 }
 
+/// Mostra todas as refeições para os dias da semana pedidos:
+/// - `restaurant_codes`: Lista dos restaurantes pedidos.
+/// - `menu_type`: Tipo de refeição a ser exibido.
+///     - `Some(menu_type)`: Mostra apenas as refeições do tipo especificado.
+///     - `None`: Mostra todas as refeições.
+/// - `weekday`: Dia da semana a ser exibido.
+///     - `Some(weekday)`: Mostra apenas as refeições do dia especificado.
+///     - `None`: Mostra todas as refeições da semana.
 pub async fn display_all_menus(
     restaurant_codes: Vec<RestaurantCode>,
-    everything: bool,
     weekday: Option<Weekday>,
     menu_type: Option<MenuType>,
 ) {
@@ -143,13 +166,11 @@ pub async fn display_all_menus(
 
     display_logo(true);
 
-    if everything {
+    if let Some(weekday) = weekday {
+        display_menus_of_day(&mut menus_cache, &restaurant_codes, &menu_type, weekday).await;
+    } else {
         for weekday in WEEKDAYS {
             display_menus_of_day(&mut menus_cache, &restaurant_codes, &menu_type, weekday).await;
         }
-    } else {
-        let weekday = weekday.unwrap_or_else(|| Local::now().naive_local().weekday());
-
-        display_menus_of_day(&mut menus_cache, &restaurant_codes, &menu_type, weekday).await;
     }
 }

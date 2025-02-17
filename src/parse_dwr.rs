@@ -1,34 +1,49 @@
+/*! Este arquivo contém funções para extrair dados do sistema da USP.
+
+Os dados do sistema da USP são extraídos a partir de ~~✘uma API RESTful fornecida pela USP✘~~ uma
+página ajax gerada pelo Framework DWR, esse ajax é usada, por exemplo, na página <https://uspdigital.usp.br/rucard/Jsp/cardapioSAS.jsp?codrtn=1>.
+Assim, temos acesso a algumas informações do sistema da USP, divididas em duas funções:
+
+* `obterRestauranteUsp`: Apresenta informações sobre um restaurante da USP.
+* `obterCardapioRestUSP`: Obtém o cardápio de um restaurante da USP.
+
+# Dados extraídos do CardapioControleDWR
+
+Todas as colunas de dados então presentes nas duas funções (R e C), mas algumas só são definidas em uma das funções:
+
+### Definidas nas duas funções:
+- `codrtn`: ID do restaurante
+
+### Definidas apenas na `obterRestauranteUsp`:
+- `nomrtn`: Nome do restaurante
+- `codddd1`: DDD do restaurante
+- `numtel1`: Número de telefone do restaurante, pasmem, em ponto flutuante, por exemplo: 3.0913318E7 - kk
+
+### Definidas apenas na `obterCardapioRestUSP`:
+- `cdpdia`: Texto do cardápio
+- `diames`: Dia da refeição
+- `diasemana`: Dia da semana da refeição (Domingo: 1, Segunda: 2, ..., Sabado: 7)
+- `dtainismncdp`: Data (dia, mês e ano) da refeição
+- `dtarfi`: O mesmo que "dtainismncdp" (?, parece que "dtainismncdp" é data de inicio e "dtarfi", de fim)
+- `obscdp`: observações do cardápio para refeição (so foi encontrado " " ou null, o "obscdpsmn" é mais util)
+- `obscdpsmn`: Observações do cardápio para a semana
+- `tiprfi`: Tipo da refeição ("A" de almoço e "J" de janta)
+- `vlrclorfi`: Calor calórico da refeição
+*/
+
 use crate::types::{Menu, MenuType, RestaurantCode};
 use chrono::Weekday;
 use html_escape::decode_html_entities;
 use regex::Regex;
 use unescape::unescape;
 
-/** # Dados do CardapioControleDWR
+trait FromDWR<T = Self> {
+    fn from_dwr(value: &str) -> Option<T>;
+}
 
-   Todas as colunas de dados então presentes nas duas funções, mas algumas não são nulos em apenas uma delas
-   obterRestauranteUsp: R, obterCardapioRestUSP: C
-
-   - codrtn:    (RC) ID do restaurante
-
-   - nomrtn:    (R) Nome do restaurante
-   - codddd1:   (R) DDD do restaurante
-   - numtel1:   (R) Número de telefone do restaurante, pasmem, em ponto flutuante, por exemplo: 3.0913318E7 - kk
-
-   - cdpdia:        (C) Texto do cardápio
-   - diames:        (C) Dia da refeição
-   - diasemana:     (C) Dia da semana da refeição (Domingo: 1, Segunda: 2, ..., Sabado: 7)
-   - dtainismncdp:  (C) Data (dia, mês e ano) da refeição
-   - dtarfi:        (C) O mesmo que "dtainismncdp" (?, parece que "dtainismncdp" é data de inicio e "dtarfi", de fim)
-   - obscdp:        (C) observações do cardápio para refeição (so foi encontrado " " ou null, o "obscdpsmn" é mais util)
-   - obscdpsmn:     (C) Observações do cardápio para a semana
-   - tiprfi:        (C) Tipo da refeição ("A" de almoço e "J" de janta)
-   - vlrclorfi:     (C) Calor calórico da refeição
-*/
-
-impl MenuType {
-    fn from_drw_value(input: &str) -> Option<MenuType> {
-        match input {
+impl FromDWR for MenuType {
+    fn from_dwr(value: &str) -> Option<MenuType> {
+        match value.trim_matches('"') {
             "A" => Some(MenuType::Lunch),
             "J" => Some(MenuType::Dinner),
             _ => None,
@@ -36,19 +51,27 @@ impl MenuType {
     }
 }
 
-impl Menu {
-    fn from_drw_object(object: &str) -> Option<Menu> {
+impl FromDWR for Weekday {
+    fn from_dwr(value: &str) -> Option<Weekday> {
+        // No DWR, o domingo é 1, segunda é 2, ... e sábado é 7
+        // Na função Weekday::try_from, o segunda é 0, terça é 1, ... e domingo é 6
+        // Dessa forma, (weekday + 5) % 7 transforma o valor do DWR em um valor válido para Weekday::try_from
+        let weekday = value.parse::<u8>().ok()?;
+        let weekday = (weekday + 5) % 7;
+        Weekday::try_from(weekday).ok()
+    }
+}
+
+impl FromDWR for Menu {
+    fn from_dwr(object: &str) -> Option<Menu> {
         let content = get_value_in_dwr_object(object, KEY_MENU)?;
         let content = format_text_dwr_value(content)?;
 
         let menu_type = get_value_in_dwr_object(object, KEY_MENU_TYPE)?;
-        let menu_type = MenuType::from_drw_value(menu_type.trim_matches('"'))?;
+        let menu_type = MenuType::from_dwr(menu_type.as_str())?;
 
         let weekday = get_value_in_dwr_object(object, KEY_WEEKDAY_MENU)?;
-        let weekday = weekday.parse::<u8>().ok()?;
-        // It starts on Sunday with 1 and ends on Saturday with 7,
-        // but Weekday::try_from starts on monday...
-        let weekday = Weekday::try_from((weekday + 5) % 7).ok()?;
+        let weekday = Weekday::from_dwr(weekday.as_str())?;
 
         let calorific_value = get_value_in_dwr_object(object, KEY_CALORIFIC_VALUE)?;
         let calorific_value = calorific_value.parse::<usize>().ok()?;
@@ -67,25 +90,25 @@ impl Menu {
     }
 }
 
-/// Nome do restaurante
+/// Chave do objeto DWR: Nome do restaurante
 const KEY_NAME_RESTAURANT: &str = "nomrtn";
 
-/// Conteúdo da refeição
+/// Chave do objeto DWR: Conteúdo da refeição
 const KEY_MENU: &str = "cdpdia";
 
-/// Dia da semana da refeição (Domingo: 1, Segunda: 2, ..., Sabado: 7)
+/// Chave do objeto DWR: Dia da semana da refeição (Domingo: 1, Segunda: 2, ..., Sabado: 7)
 const KEY_WEEKDAY_MENU: &str = "diasemana";
 
-/// Observações do refeição
+/// Chave do objeto DWR: Observações do refeição
 const KEY_OBS_MENU: &str = "obscdpsmn";
 
-/// Tipo da refeição, por exemplo: janta ou almoço
+/// Chave do objeto DWR: Tipo da refeição, por exemplo: janta ou almoço
 const KEY_MENU_TYPE: &str = "tiprfi";
 
-/// Valor Calórico da refeição
+/// Chave do objeto DWR: Valor Calórico da refeição
 const KEY_CALORIFIC_VALUE: &str = "vlrclorfi";
 
-/** Slice only dwr object, starting with "\[{" and ending with "}\]" */
+/// Corta apenas o objeto dwr, começando com `[{` e terminando com `}]`
 fn slice_dwr_objects(body: &String) -> Option<&str> {
     let start_object = body.find("[{");
     let end_object = body.rfind("}]");
@@ -93,6 +116,7 @@ fn slice_dwr_objects(body: &String) -> Option<&str> {
     Some(&body[start_object? + 2..end_object?])
 }
 
+/// Formata o valor do texto do objeto dwr arrumando caracteres especiais, removendo <br>, etc.
 fn format_text_dwr_value(value: String) -> Option<String> {
     let value = &value[1..value.len() - 1]
         .replace("<br>", "\n")
@@ -105,6 +129,7 @@ fn format_text_dwr_value(value: String) -> Option<String> {
     Some(value)
 }
 
+/// Obtém o valor de uma chave em um objeto dwr usando regex
 fn get_value_in_dwr_object(object: &str, key: &str) -> Option<String> {
     let re_get_value = Regex::new(format!(".*,?{key}:(?<value>.+?)(,.*|$)").as_str()).unwrap();
     let capture = re_get_value.captures(object)?;
@@ -112,6 +137,7 @@ fn get_value_in_dwr_object(object: &str, key: &str) -> Option<String> {
     Some(String::from(&capture["value"]))
 }
 
+/// Extrai o nome do restaurante usando o código do restaurante
 pub async fn get_restaurant_name(code: RestaurantCode) -> Option<String> {
     let Ok(response) = crate::request::request_rest_name(code).await else {
         return None;
@@ -124,6 +150,7 @@ pub async fn get_restaurant_name(code: RestaurantCode) -> Option<String> {
     Some(name)
 }
 
+/// Extrai os cardápios da semana usando o código de um restaurante
 pub async fn get_menus(code: RestaurantCode) -> Option<Vec<Menu>> {
     let Ok(response) = crate::request::request_menu(code).await else {
         return None;
@@ -134,10 +161,10 @@ pub async fn get_menus(code: RestaurantCode) -> Option<Vec<Menu>> {
     let mut menus: Vec<Menu> = Vec::with_capacity(14);
 
     for object in objects.split("},{") {
-        if let Some(menu) = Menu::from_drw_object(object) {
+        if let Some(menu) = Menu::from_dwr(object) {
             menus.push(menu);
         }
-        // else { print!("Unexpected DRW object - ignored menu"); }
+        // else { return Err!("Unexpected DWR object - ignored menu"); }
     }
 
     Some(menus)
