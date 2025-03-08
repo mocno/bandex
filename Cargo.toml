@@ -13,7 +13,7 @@ license = "MIT"
 
 [dependencies]
 chrono = "0.4.40"
-clap = { version = "4.5.28", features = ["derive"] }
+clap = { version = "4.5.31", features = ["derive"] }
 html-escape = "0.2.13"
 regex = "1.11.1"
 reqwest = "0.12.9"
