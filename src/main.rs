@@ -1,3 +1,4 @@
+use cli::cli;
 use display::display_all_menus;
 use types::RestaurantCode;
 
@@ -6,7 +7,6 @@ mod display;
 mod parse_dwr;
 mod request;
 mod types;
-mod utils;
 
 const RESTAURANT_FISICA: RestaurantCode = 8;
 const RESTAURANT_QUIMICA: RestaurantCode = 9;
@@ -24,7 +24,7 @@ async fn main() -> Result<(), &'static str> {
     ]
     .to_vec();
 
-    match cli::cli() {
+    match cli() {
         Ok((menu_type, weekday)) => {
             display_all_menus(restaurant_codes, weekday, menu_type).await;
             Ok(())

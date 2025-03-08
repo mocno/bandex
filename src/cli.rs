@@ -91,3 +91,87 @@ pub fn cli() -> Result<(Option<MenuType>, Option<Weekday>), &'static str> {
 
     Ok((menu_type, weekday))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_weekday() {
+        for (weekday_str, expected_weekday) in [
+            ("1", Weekday::Mon),
+            ("2", Weekday::Tue),
+            ("3", Weekday::Wed),
+            ("4", Weekday::Thu),
+            ("5", Weekday::Fri),
+            ("6", Weekday::Sat),
+            ("7", Weekday::Sun),
+        ] {
+            let result = parse_weekday(weekday_str);
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap(), expected_weekday);
+        }
+
+        let weekday_str = "0";
+        let result = parse_weekday(weekday_str);
+        assert!(result.is_err());
+
+        let weekday_str = "8";
+        let result = parse_weekday(weekday_str);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cli_get_right_info() {
+        let cli = Cli::try_parse_from(vec!["bandex", "-a", "-w", "2"]);
+        assert!(cli.is_ok());
+
+        let cli = cli.unwrap();
+
+        assert!(cli.lunch, "CLI parses \"-a -w 2\": lunch must be true");
+        assert!(!cli.dinner, "CLI parses \"-a -w 2\": dinner must be false");
+        assert!(
+            cli.weekday.is_some() && cli.weekday.unwrap() == Weekday::Tue,
+            "CLI parses \"-a -w 2\": weekday must be Tuesday"
+        );
+
+        let cli = Cli::try_parse_from(vec!["bandex", "-aj", "-e"]);
+        assert!(cli.is_ok());
+
+        let cli = cli.unwrap();
+
+        assert!(cli.lunch, "CLI parses \"-aj -e\": lunch must be true");
+        assert!(cli.dinner, "CLI parses \"-aj -e\": dinner must be true");
+        assert!(
+            cli.everything,
+            "CLI parses \"-aj -e\": everything must be true"
+        );
+
+        let cli = Cli::try_parse_from(vec!["bandex", "-w", "0"]);
+        assert!(cli.is_err());
+
+        let cli = Cli::try_parse_from(vec!["bandex", "-w", "8"]);
+        assert!(cli.is_err());
+    }
+
+    #[test]
+    fn test_get_menu_type_by_datetime() {
+        let menu_type = get_menu_type_by_datetime(NaiveTime::from_hms_opt(5, 31, 47).unwrap());
+        assert!(menu_type.is_none());
+
+        let menu_type = get_menu_type_by_datetime(NaiveTime::from_hms_opt(6, 11, 32).unwrap());
+        assert!(menu_type.is_some() && menu_type.unwrap() == MenuType::Lunch);
+
+        let menu_type = get_menu_type_by_datetime(NaiveTime::from_hms_opt(13, 52, 19).unwrap());
+        assert!(menu_type.is_some() && menu_type.unwrap() == MenuType::Lunch);
+
+        let menu_type = get_menu_type_by_datetime(NaiveTime::from_hms_opt(14, 35, 12).unwrap());
+        assert!(menu_type.is_some() && menu_type.unwrap() == MenuType::Dinner);
+
+        let menu_type = get_menu_type_by_datetime(NaiveTime::from_hms_opt(19, 49, 41).unwrap());
+        assert!(menu_type.is_some() && menu_type.unwrap() == MenuType::Dinner);
+
+        let menu_type = get_menu_type_by_datetime(NaiveTime::from_hms_opt(20, 12, 19).unwrap());
+        assert!(menu_type.is_none());
+    }
+}

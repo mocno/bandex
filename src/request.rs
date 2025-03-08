@@ -66,3 +66,25 @@ pub async fn request_menu(code: RestaurantCode) -> Result<String, reqwest::Error
 
     return Ok(response);
 }
+
+#[cfg(test)]
+mod test {
+
+    use std::usize;
+
+    use crate::RESTAURANT_CENTRAL;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_request_rest_name() {
+        let response = request_rest_name(RESTAURANT_CENTRAL).await.unwrap();
+        assert!(response.contains("Restaurante Central"));
+    }
+
+    #[tokio::test]
+    async fn test_request_menu() {
+        let response = request_menu(RESTAURANT_CENTRAL).await.unwrap();
+        assert!(response.contains("cdpdia"));
+    }
+}

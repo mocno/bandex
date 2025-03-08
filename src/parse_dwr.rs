@@ -158,7 +158,7 @@ pub async fn get_menus(code: RestaurantCode) -> Option<Vec<Menu>> {
 
     let objects = slice_dwr_objects(&response)?;
 
-    let mut menus: Vec<Menu> = Vec::with_capacity(14);
+    let mut menus: Vec<Menu> = Vec::new();
 
     for object in objects.split("},{") {
         if let Some(menu) = Menu::from_dwr(object) {
@@ -168,4 +168,161 @@ pub async fn get_menus(code: RestaurantCode) -> Option<Vec<Menu>> {
     }
 
     Some(menus)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::RESTAURANT_CENTRAL;
+
+    use super::*;
+
+    #[test]
+    fn test_format_text_dwr_value() {
+        let value = format_text_dwr_value("\"Arroz \\/ feij\\u00E3o \\/ arroz integral<br>Carne em cubos com molho ferrugem <br>Op\\u00E7\\u00E3o: Ovos mexidos com legumes<br>Berinjela com piment\\u00F5es <br>Salada de alface<br>Sag\\u00FA com groselha<br>Minip\\u00E3o \\/ refresco<br><br>**Os Restaurantes Universit\\u00E1rios n\\u00E3o fornecem copos descart\\u00E1veis. Tragam suas canecas.**\"".to_string());
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), "Arroz, feijão, arroz integral\nCarne em cubos com molho ferrugem \nOpção: Ovos mexidos com legumes\nBerinjela com pimentões \nSalada de alface\nSagú com groselha\nMinipão, refresco\n\n**Os Restaurantes Universitários não fornecem copos descartáveis. Tragam suas canecas.**");
+
+        let value = format_text_dwr_value(
+            "\"\\u00C3h \\/ <br>\\u00f1 \\u00E7\\u00F5\\u00FA<br> \\/ \\u00E1\"".to_string(),
+        );
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), "Ãh, \nñ çõú\n, á");
+    }
+
+    #[test]
+    fn test_slice_dwr_objects() {
+        let response = "throw 'allowScriptTagRemoting is false.';\n(function(){\r\nif(!window.dwr)return;\r\nvar dwr=window.dwr._[0];\n//#DWR-REPLY\ndwr.engine.remote.handleCallback(\"0\",\"a\",[{cdpdia:null,codddd1:11,codrtn:6,diames:0,diasemana:0,dtainismncdp:null,dtarfi:null,nomrtn:\"Restaurante Central\",numtel1:3.0913318E7,obscdp:null,obscdpsmn:null,tiprfi:null,vlrclorfi:0}]);\n})();\n".to_string();
+        let objects = slice_dwr_objects(&response);
+        assert!(objects.is_some());
+        assert_eq!(
+            objects.unwrap(),
+            "cdpdia:null,codddd1:11,codrtn:6,diames:0,diasemana:0,dtainismncdp:null,dtarfi:null,nomrtn:\"Restaurante Central\",numtel1:3.0913318E7,obscdp:null,obscdpsmn:null,tiprfi:null,vlrclorfi:0"
+        );
+
+        let response = "throw 'allowScriptTagRemoting is false.';\n(function(){\r\nif(!window.dwr)return;\r\nvar dwr=window.dwr._[0];\n//#DWR-REPLY\ndwr.engine.remote.handleCallback(\"0\",\"a\",[{key1:value1},{key2:value2}]);\n})();\n".to_string();
+        let objects = slice_dwr_objects(&response);
+        assert!(objects.is_some());
+        assert_eq!(objects.unwrap(), "key1:value1},{key2:value2");
+    }
+
+    #[test]
+    fn test_get_value_in_dwr_object() {
+        let dwr_object = "cdpdia:\"Fechado\",codddd1:0,codrtn:7,diames:4,diasemana:3,dtainismncdp:\"04\\/03\\/2025\",dtarfi:\"04\\/03\\/2025\",nomrtn:null,numtel1:0.0,obscdp:null,obscdpsmn:\"Card\\u00E1pio sujeito a modifica\\u00E7\\u00E3o.<br><br>**Os Restaurantes Universit\\u00E1rios n\\u00E3o fornecem copos descart\\u00E1veis. Tragam suas canecas.**\",tiprfi:\"A\",vlrclorfi:0";
+        let value = get_value_in_dwr_object(dwr_object, KEY_MENU);
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), "\"Fechado\"");
+
+        let value = get_value_in_dwr_object(dwr_object, KEY_MENU_TYPE);
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), "\"A\"");
+
+        let value = get_value_in_dwr_object(dwr_object, KEY_CALORIFIC_VALUE);
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), "0");
+
+        let value = get_value_in_dwr_object("key1:test,key2:123", "key1");
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), "test");
+
+        let value = get_value_in_dwr_object("key1:test,key2:123", "key2");
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), "123");
+    }
+
+    #[test]
+    fn test_menu_type_from_dwr() {
+        let menu_type = MenuType::from_dwr(r#""A""#);
+        assert!(menu_type.is_some());
+        assert_eq!(menu_type.unwrap(), MenuType::Lunch);
+
+        let menu_type = MenuType::from_dwr(r#""J""#);
+        assert!(menu_type.is_some());
+        assert_eq!(menu_type.unwrap(), MenuType::Dinner);
+
+        let menu_type = MenuType::from_dwr(r#""D""#);
+        assert!(menu_type.is_none());
+
+        let menu_type = MenuType::from_dwr(r#""""#);
+        assert!(menu_type.is_none());
+
+        let menu_type = MenuType::from_dwr("null");
+        assert!(menu_type.is_none());
+    }
+
+    #[test]
+    fn test_weekday_from_dwr() {
+        let weekday = Weekday::from_dwr(r#"1"#);
+        assert!(weekday.is_some());
+        assert_eq!(weekday.unwrap(), Weekday::Sun);
+
+        let weekday = Weekday::from_dwr(r#"2"#);
+        assert!(weekday.is_some());
+        assert_eq!(weekday.unwrap(), Weekday::Mon);
+
+        let weekday = Weekday::from_dwr(r#"3"#);
+        assert!(weekday.is_some());
+        assert_eq!(weekday.unwrap(), Weekday::Tue);
+
+        let weekday = Weekday::from_dwr(r#"4"#);
+        assert!(weekday.is_some());
+        assert_eq!(weekday.unwrap(), Weekday::Wed);
+
+        let weekday = Weekday::from_dwr(r#"5"#);
+        assert!(weekday.is_some());
+        assert_eq!(weekday.unwrap(), Weekday::Thu);
+
+        let weekday = Weekday::from_dwr(r#"6"#);
+        assert!(weekday.is_some());
+        assert_eq!(weekday.unwrap(), Weekday::Fri);
+
+        let weekday = Weekday::from_dwr(r#""""#);
+        assert!(weekday.is_none());
+
+        let weekday = Weekday::from_dwr("null");
+        assert!(weekday.is_none());
+    }
+
+    #[test]
+    fn test_menu_from_dwr() {
+        let menu = Menu::from_dwr(
+            "cdpdia:\"Arroz \\/ feij\\u00E3o \\/ arroz integral<br>Lingui\\u00E7a com molho barbecue<br>Op\\u00E7\\u00E3o: PVT com milho e ervilha<br>Macarr\\u00E3o ao sugo<br>Salada de repolho bicolor<br>Laranja<br>Minip\\u00E3o \\/ refresco<br><br><br><br>**Os Restaurantes Universit\\u00E1rios n\\u00E3o fornecem copos descart\\u00E1veis. Tragam suas canecas.**\",codddd1:0,codrtn:7,diames:6,diasemana:5,dtainismncdp:\"06\\/03\\/2025\",dtarfi:\"06\\/03\\/2025\",nomrtn:null,numtel1:0.0,obscdp:null,obscdpsmn:\"Card\\u00E1pio sujeito a modifica\\u00E7\\u00E3o.<br><br>**Os Restaurantes Universit\\u00E1rios n\\u00E3o fornecem copos descart\\u00E1veis. Tragam suas canecas.**\",tiprfi:\"A\",vlrclorfi:1030"
+        );
+        assert!(menu.is_some());
+        let menu = menu.unwrap();
+        assert!(menu.content.starts_with("Arroz, feijão"));
+        assert_eq!(menu.menu_type, MenuType::Lunch);
+        assert_eq!(menu.weekday, Weekday::Thu);
+        assert_eq!(menu.calorific_value.unwrap(), 1030);
+        assert!(menu
+            .observation
+            .starts_with("Cardápio sujeito a modificação"));
+
+        let menu = Menu::from_dwr(
+            "cdpdia:\"Fechado\",codddd1:0,codrtn:7,diames:9,diasemana:1,dtainismncdp:\"09\\/03\\/2025\",dtarfi:\"09\\/03\\/2025\",nomrtn:null,numtel1:0.0,obscdp:null,obscdpsmn:\"Card\\u00E1pio sujeito a modifica\\u00E7\\u00E3o.<br><br>**Os Restaurantes Universit\\u00E1rios n\\u00E3o fornecem copos descart\\u00E1veis. Tragam suas canecas.**\",tiprfi:\"J\",vlrclorfi:0"
+        );
+        assert!(menu.is_some());
+        let menu = menu.unwrap();
+        assert_eq!(menu.content, "Fechado");
+        assert_eq!(menu.menu_type, MenuType::Dinner);
+        assert_eq!(menu.weekday, Weekday::Sun);
+        assert!(menu.calorific_value.is_none());
+        assert!(menu
+            .observation
+            .starts_with("Cardápio sujeito a modificação"));
+
+        let menu = Menu::from_dwr("teste claramente errado");
+        assert!(menu.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_restaurant_name() {
+        let name = get_restaurant_name(RESTAURANT_CENTRAL).await.unwrap();
+        assert_eq!(name, "Restaurante Central");
+    }
+
+    #[tokio::test]
+    async fn test_get_menus() {
+        let menus = get_menus(RESTAURANT_CENTRAL).await.unwrap();
+        assert_eq!(menus.len(), 14);
+    }
 }

@@ -17,7 +17,7 @@ pub enum MenuType {
 impl ToString for MenuType {
     fn to_string(&self) -> String {
         match self {
-            MenuType::Dinner => "Janta",
+            MenuType::Dinner => "Jantar",
             MenuType::Lunch => "Almoço",
         }
         .to_string()
@@ -87,5 +87,32 @@ impl MenusCache {
         }
 
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::RESTAURANT_CENTRAL;
+
+    use super::*;
+
+    #[test]
+    fn test_menu_type_to_string() {
+        assert_eq!(MenuType::Lunch.to_string(), "Almoço");
+        assert_eq!(MenuType::Dinner.to_string(), "Jantar");
+    }
+
+    #[tokio::test]
+    async fn test_get_name_and_menu_from_menu_cache() {
+        let mut cache = MenusCache::new();
+        let value = cache
+            .get_name_and_menu(RESTAURANT_CENTRAL, &MenuType::Lunch, Weekday::Mon)
+            .await;
+
+        assert!(value.is_some());
+        let (name, menu) = value.unwrap();
+        assert_eq!(name, "Restaurante Central");
+        assert!(menu.weekday == Weekday::Mon);
+        assert!(menu.menu_type == MenuType::Lunch);
     }
 }
