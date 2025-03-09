@@ -12,10 +12,10 @@ repository = "https://github.com/mocno/bandex"
 license = "MIT"
 
 [dependencies]
-chrono = "0.4.39"
-clap = { version = "4.5.28", features = ["derive"] }
+chrono = "0.4.40"
+clap = { version = "4.5.31", features = ["derive"] }
 html-escape = "0.2.13"
 regex = "1.11.1"
 reqwest = "0.12.9"
-tokio = { version = "1.41.1", features = ["full"] }
+tokio = { version = "1.44.0", features = ["full"] }
 unescape = "0.1.0"
