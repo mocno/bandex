@@ -69,9 +69,6 @@ pub async fn request_menu(code: RestaurantCode) -> Result<String, reqwest::Error
 
 #[cfg(test)]
 mod test {
-
-    use std::usize;
-
     use crate::RESTAURANT_CENTRAL;
 
     use super::*;
