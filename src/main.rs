@@ -1,5 +1,5 @@
 use cli::cli;
-use display::display_all_menus;
+use display::Display;
 use types::RestaurantCode;
 
 mod cli;
@@ -26,7 +26,11 @@ async fn main() -> Result<(), &'static str> {
 
     match cli() {
         Ok((menu_type, weekday)) => {
-            display_all_menus(restaurant_codes, weekday, menu_type).await;
+            let mut display = Display::new();
+
+            display
+                .all_menus(restaurant_codes, weekday, menu_type)
+                .await;
             Ok(())
         }
         Err(err) => Err(err),
