@@ -1,3 +1,9 @@
+/*!
+Funções para exibir informações do Bandex.
+
+Este módulo contém estruturas e funções para exibir informações do Bandex.
+ */
+
 use crate::{
     config::Config,
     types::{Menu, MenuType, MenusCache},

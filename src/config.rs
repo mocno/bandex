@@ -1,3 +1,14 @@
+/*!
+Leitura do arquivo de configuração
+
+Este módulo contém as estruturas e funções responsáveis pela leitura e
+interpretação do arquivo de configuração YAML do Bandex.
+
+O arquivo de configuração permite personalizar os restaurantes, definindo seus
+IDs e cores para visualização. Se nenhum arquivo for fornecido ou se o arquivo
+estiver inválido, serão utilizadas as configurações padrão.
+*/
+
 use std::{
     fs,
     io::{Error, ErrorKind},

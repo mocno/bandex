@@ -1,3 +1,16 @@
+/*!
+Funções de requisições para o USP Digital
+
+Este módulo fornece funções para realizar requisições HTTP aos serviços da USP Digital
+para obter informações sobre restaurantes universitários.
+
+As funções disponíveis permitem:
+- Obter o nome de um restaurante pelo seu código
+- Obter o cardápio de um restaurante pelo seu código
+
+Todas as funções retornam o conteúdo da requisição ou um erro de requisição `reqwest::Error`.
+*/
+
 use crate::types::RestaurantCode;
 use reqwest;
 

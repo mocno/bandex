@@ -1,3 +1,6 @@
+/*!
+Algumas objetos para funcionamento do aplicativo
+*/
 use crate::parse_dwr;
 use chrono::Weekday;
 use std::collections::HashMap;

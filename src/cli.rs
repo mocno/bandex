@@ -1,3 +1,16 @@
+/*!
+CLI do Bandex
+
+Este arquivo define a interface de linha de comando para o aplicativo.
+
+O CLI processa argumentos como:
+- `-a`: Para visualizar apenas almoços
+- `-j`: Para visualizar apenas jantares
+- `-w`: Para especificar o dia da semana
+- `-e`: Para mostrar todos os cardápios da semana
+- `-c`: Para especificar um arquivo de configuração personalizado
+*/
+
 use std::{
     io::{Error, ErrorKind},
     path::PathBuf,
