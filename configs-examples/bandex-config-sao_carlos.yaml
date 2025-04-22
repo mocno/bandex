@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../bandex-config.schema.json
+#
+# Configurações do Bandex
+bandex:
+  # Configurações dos restaurantes:
+  #
+  # Aqui vamos definir quais e com quais cor os restaurantes serão exibidos.
+  # A cor pode ser definida por RGB ou pelo nome da cor (os nomes das cores possíveis estão no schema
+  # ou no enum Color em <https://docs.rs/colored/latest/colored/enum.Color.html#variants>)
+  restaurants:
+    # Restaurante de São Carlos - campos 1
+    - id: &RESTAURANT_SC_1 2
+      color: [240, 218, 94] # por RGB
+
+    # Restaurante de São Carlos - campos 2
+    - id: &RESTAURANT_SC_2 3
+      color: blue # por nome

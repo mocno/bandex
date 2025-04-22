@@ -69,7 +69,8 @@ pub async fn request_menu(code: RestaurantCode) -> Result<String, reqwest::Error
 
 #[cfg(test)]
 mod test {
-    use crate::RESTAURANT_CENTRAL;
+    /// ID do restaurante Central
+    const RESTAURANT_CENTRAL: RestaurantCode = 6;
 
     use super::*;
 

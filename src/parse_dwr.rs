@@ -121,6 +121,7 @@ fn format_text_dwr_value(value: String) -> Option<String> {
     let value = &value[1..value.len() - 1]
         .replace("<br>", "\n")
         .replace(" \\/ ", ", ")
+        .replace("\\/", "\n")
         .trim()
         .to_string();
     let value = unescape(value)?;
@@ -172,7 +173,8 @@ pub async fn get_menus(code: RestaurantCode) -> Option<Vec<Menu>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::RESTAURANT_CENTRAL;
+    /// ID do restaurante Central
+    const RESTAURANT_CENTRAL: RestaurantCode = 6;
 
     use super::*;
 

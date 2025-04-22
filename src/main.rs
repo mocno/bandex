@@ -1,38 +1,40 @@
+use std::io::Error;
+
 use cli::cli;
+use config::Config;
 use display::Display;
-use types::RestaurantCode;
 
 mod cli;
+mod config;
 mod display;
 mod parse_dwr;
 mod request;
 mod types;
 
-const RESTAURANT_FISICA: RestaurantCode = 8;
-const RESTAURANT_QUIMICA: RestaurantCode = 9;
-const RESTAURANT_PREF: RestaurantCode = 7;
-const RESTAURANT_CENTRAL: RestaurantCode = 6;
-
-/// Função que orquestra a execução do programa, lendo a CLI e mostrando os menus pedidos
+/// Função que orquestra a execução do programa
+///
+/// - Recebe dados enviados no CLI, como quais cardápios devem ser exibidos
+/// - Lê, se existir, o arquivo de configurações, que define que restaurantes devem ser exibidos
+/// - Mostra os dados dos cardápios considerando as configurações
 #[tokio::main]
-async fn main() -> Result<(), &'static str> {
-    let restaurant_codes = [
-        RESTAURANT_CENTRAL,
-        RESTAURANT_QUIMICA,
-        RESTAURANT_FISICA,
-        RESTAURANT_PREF,
-    ]
-    .to_vec();
+async fn main() -> Result<(), Error> {
+    let mut display = Display::new();
 
-    match cli() {
-        Ok((menu_type, weekday)) => {
-            let mut display = Display::new();
+    Display::logo(true);
 
-            display
-                .all_menus(restaurant_codes, weekday, menu_type)
-                .await;
-            Ok(())
-        }
-        Err(err) => Err(err),
-    }
+    let (menu_type, weekday, config_filepath) = cli()?;
+
+    let config = match config_filepath {
+        None => Config::default(),
+        Some(filepath) => Config::from_file(filepath).unwrap_or_else(|message| {
+            Display::error_message(format!(
+                "Erro ao ler o arquivo de configurações: {}",
+                message
+            ));
+            Config::default()
+        }),
+    };
+
+    display.all_menus(weekday, menu_type, &config).await;
+    Ok(())
 }

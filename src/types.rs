@@ -92,7 +92,8 @@ impl MenusCache {
 
 #[cfg(test)]
 mod tests {
-    use crate::RESTAURANT_CENTRAL;
+    /// ID do restaurante Central
+    const RESTAURANT_CENTRAL: RestaurantCode = 6;
 
     use super::*;
 

@@ -1,3 +1,8 @@
+use std::{
+    io::{Error, ErrorKind},
+    path::PathBuf,
+};
+
 use crate::types::MenuType;
 use chrono::{Datelike, Local, NaiveTime, Weekday};
 use clap::Parser;
@@ -18,7 +23,10 @@ fn parse_weekday(s: &str) -> Result<Weekday, String> {
 
 /// Mostra o cardápio dos restaurantes da USP
 ///
-/// Veja as refeições dos bandeijões de acordo com o seu horário
+/// Veja as refeições de qualquer bandeijão de acordo com o seu horário.
+///
+/// Esse projeto é publico, sinta-se a vontade para contribuir!
+/// O repositorio do projeto se encontra em <https://github.com/mocno/bandex>
 #[derive(Debug, Parser)]
 #[command(
     version,
@@ -29,15 +37,25 @@ struct Cli {
     /// Mostra apenas os almoços
     #[arg(short = 'a')]
     lunch: bool,
+
     /// Mostra apenas os jantares
     #[arg(short = 'j')]
     dinner: bool,
+
     /// Mostra as refeições do dia escolhido, por padrão, o dia atual (Segunda = 1, Terça = 2, etc)
     #[arg(short, long, value_parser=parse_weekday)]
     weekday: Option<Weekday>,
+
     /// Mostra todas as refeições da semana!
     #[arg(short, long)]
     everything: bool,
+
+    /// Arquivo de configuração do bandex
+    ///
+    /// Esse arquivo, em YAML, configura os restaurantes que deseja ver e com quais cores.
+    /// Para referencia, há exemplos no repositório do projeto.
+    #[arg(short, long)]
+    config: Option<PathBuf>,
 }
 
 /// Retorna o tipo da refeição com base na hora atual.
@@ -67,11 +85,14 @@ fn get_menu_type_by_datetime(time: NaiveTime) -> Option<MenuType> {
 /// - O dia da semana escolhido:
 ///     - `Some(weekday)`: se o usuário especificou um dia
 ///     - `None`: se o usuário não quer todos os dias da semana
-pub fn cli() -> Result<(Option<MenuType>, Option<Weekday>), &'static str> {
+pub fn cli() -> Result<(Option<MenuType>, Option<Weekday>, Option<PathBuf>), Error> {
     let cli = Cli::parse();
 
     if cli.weekday != None && cli.everything {
-        return Err("Escolha mostrar um dia especifico (-d <WEEKDAY>) ou todos os dias (-E)");
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "Escolha mostrar um dia especifico (-w <WEEKDAY>) ou todos os dias (-E)",
+        ));
     }
 
     let current_time = Local::now().time();
@@ -89,7 +110,7 @@ pub fn cli() -> Result<(Option<MenuType>, Option<Weekday>), &'static str> {
         (true, _) => None,
     };
 
-    Ok((menu_type, weekday))
+    Ok((menu_type, weekday, cli.config))
 }
 
 #[cfg(test)]
@@ -123,16 +144,26 @@ mod tests {
 
     #[test]
     fn test_cli_get_right_info() {
-        let cli = Cli::try_parse_from(vec!["bandex", "-a", "-w", "2"]);
+        let cli = Cli::try_parse_from(vec!["bandex", "-a", "-w", "2", "-c", "config.yaml"]);
         assert!(cli.is_ok());
 
         let cli = cli.unwrap();
 
-        assert!(cli.lunch, "CLI parses \"-a -w 2\": lunch must be true");
-        assert!(!cli.dinner, "CLI parses \"-a -w 2\": dinner must be false");
+        assert!(
+            cli.lunch,
+            "CLI parses \"-a -w 2 -c config.yaml\": lunch must be true"
+        );
+        assert!(
+            !cli.dinner,
+            "CLI parses \"-a -w 2 -c config.yaml\": dinner must be false"
+        );
         assert!(
             cli.weekday.is_some() && cli.weekday.unwrap() == Weekday::Tue,
-            "CLI parses \"-a -w 2\": weekday must be Tuesday"
+            "CLI parses \"-a -w 2 -c config.yaml\": weekday must be Tuesday"
+        );
+        assert!(
+            cli.config.is_some() && cli.config.unwrap() == PathBuf::from("config.yaml"),
+            "CLI parses \"-a -w 2 -c config.yaml\": config file must be \"config.yaml\""
         );
 
         let cli = Cli::try_parse_from(vec!["bandex", "-aj", "-e"]);
@@ -145,6 +176,10 @@ mod tests {
         assert!(
             cli.everything,
             "CLI parses \"-aj -e\": everything must be true"
+        );
+        assert!(
+            cli.config.is_none(),
+            "CLI parses \"-aj -e\": config file must be None"
         );
 
         let cli = Cli::try_parse_from(vec!["bandex", "-w", "0"]);

@@ -1,5 +1,9 @@
-use crate::types::{Menu, MenuType, MenusCache, RestaurantCode};
+use crate::{
+    config::Config,
+    types::{Menu, MenuType, MenusCache},
+};
 use chrono::Weekday;
+use colored::{Color, Colorize};
 
 /// Dias da semana
 const WEEKDAYS: [Weekday; 5] = [
@@ -21,16 +25,42 @@ const WEEKDAY_NAMES: [&str; 7] = [
     "Domingo",
 ];
 
-/// Hierarquia de cores para os títulos
-///
-/// Essas cores são usadas para diferenciar os níveis de hierarquia dos títulos
-/// na função display::display_title.
-const COLOR_HIERARCHY: [u8; 3] = [147, 183, 219];
+/// Cor para os titulos de dia da semana
+const COLOR_WEEK_DAY: Color = Color::TrueColor {
+    r: 153,
+    g: 153,
+    b: 255,
+};
+
+/// Cor para os titulos de tipo de menu (almoço ou jantar)
+const COLOR_MENU_TYPE: Color = Color::TrueColor {
+    r: 204,
+    g: 153,
+    b: 255,
+};
 
 /// Estrutura para controlar a exibição das informações do Bandex.
 pub struct Display {
     /// Cache dos menus e dos nomes dos restaurantes, de modo a evitar requisições desnecessárias.
     menus_cache: MenusCache,
+}
+
+/// Cria 3 tipos de titulos que podem ser coloridos.
+macro_rules! print_header {
+    (H3, $title:expr, $color:expr) => {{
+        let content = format!("  # {:~^46} #  ", format!(" {} ", $title)).color($color);
+        println!("{}", content);
+    }};
+
+    (H2, $title:expr, $color:expr) => {{
+        let content = format!(" # {:~^48} # ", format!(" {} ", $title)).color($color);
+        println!("{}", content);
+    }};
+
+    (H1, $title:expr, $color:expr) => {{
+        let content = format!("# {:~^50} #", format!(" {} ", $title)).color($color);
+        println!("{}", content);
+    }};
 }
 
 impl Display {
@@ -57,7 +87,7 @@ impl Display {
     /// Mostra a logo do Bandex com ou sem cor.
     ///
     /// Referência da fonte: <https://patorjk.com/software/taag/#p=display&f=Doom&t=Bandex>.
-    fn logo(with_colors: bool) {
+    pub fn logo(with_colors: bool) {
         let reset = Self::RESET;
         let version = env!("CARGO_PKG_VERSION");
 
@@ -70,30 +100,17 @@ impl Display {
         // Print logo with colors
         println!(
             "{reset}\
-    {bg}{c1}      _____                    {c4}_             {reset}
-    {bg}{c1} | ___ \\                  {c4}| |            {reset}
-    {bg}{c1} | |_/ /{c2}  __ _ {c3} _ __  {c4}  __| |{c5}  ___ {c6}__  __{reset}
-    {bg}{c1} | ___ \\{c2} / _  |{c3}|  _ \\ {c4} / _  |{c5} / _ \\{c6}\\ \\/ /{reset}
-    {bg}{c1} | |_/ /{c2}| (_| |{c3}| | | |{c4}| (_| |{c5}|  __/ {c6}>  < {reset}
-    {bg}{c1} |____/ {c2} \\__,_|{c3}|_| |_|{c4} \\__,_|{c5} \\___/{c6}/_/\\_\\ {version}{reset}\n"
-        );
-    }
-
-    /// Mostra um título adicionando cor e posicionamento a partir do seu nível, que pode variar de 0 a 2.
-    fn title(title: String, level: usize) {
-        let color = format!("\x1b[38;5;{}m", COLOR_HIERARCHY[level as usize]);
-        let reset = "\x1b[0m";
-        let title = format!(" {title} ");
-        let header_len: usize = (50 - 2 * level) as usize;
-
-        println!(
-            "{color}{0:level$}# {title:~^header_len$} #{0:level$}{reset}",
-            ""
+{bg}{c1}  _____                    {c4}_             {reset}
+{bg}{c1} | ___ \\                  {c4}| |            {reset}
+{bg}{c1} | |_/ /{c2}  __ _ {c3} _ __  {c4}  __| |{c5}  ___ {c6}__  __{reset}
+{bg}{c1} | ___ \\{c2} / _  |{c3}|  _ \\ {c4} / _  |{c5} / _ \\{c6}\\ \\/ /{reset}
+{bg}{c1} | |_/ /{c2}| (_| |{c3}| | | |{c4}| (_| |{c5}|  __/ {c6}>  < {reset}
+{bg}{c1} |____/ {c2} \\__,_|{c3}|_| |_|{c4} \\__,_|{c5} \\___/{c6}/_/\\_\\ {version}{reset}\n"
         );
     }
 
     /// Mostra uma mensagem simples de erro formatada.
-    fn error_message(msg: String) {
+    pub fn error_message(msg: String) {
         println!("   Erro: {}", msg);
     }
 
@@ -111,57 +128,54 @@ impl Display {
         println!();
     }
 
-    /// Mostra uma refeição de um tipo específico (almoço ou jantar) para cada restaurante em `restaurant_codes`.
-    async fn menus_by_type(
-        &mut self,
-        restaurant_codes: &Vec<RestaurantCode>,
-        menu_type: &MenuType,
-        weekday: Weekday,
-    ) {
-        Display::title(menu_type.to_string(), 1);
+    /// Mostra uma refeição de um tipo específico `menu_type` (almoço ou jantar) de um dia específico `weekday`.
+    ///
+    /// O parâmetro de configuração `config` define quais restaurantes devem ser exibidos (e com quais cores).
+    async fn menus_by_type(&mut self, menu_type: &MenuType, weekday: Weekday, config: &Config) {
+        print_header!(H2, menu_type.to_string(), COLOR_MENU_TYPE);
 
-        for code in restaurant_codes {
+        for restaurant in config.restaurants.iter() {
             if let Some((restaurant_name, menu)) = self
                 .menus_cache
-                .get_name_and_menu(*code, menu_type, weekday)
+                .get_name_and_menu(restaurant.id, menu_type, weekday)
                 .await
             {
-                Display::title(restaurant_name, 2);
+                print_header!(H3, restaurant_name, restaurant.color);
                 Display::menu(menu);
             } else {
                 Display::error_message(format!(
-                    "Não foi possível carregar dados desse restaurante (Rest {code})"
+                    "Não foi possível carregar dados desse restaurante (Rest {})",
+                    restaurant.id
                 ));
             }
         }
     }
 
-    /// Mostra todas as refeições de todos os restaurantes do `restaurant_codes` para o dia da semana específico definido pelo `weekday`.
+    /// Mostra todas as refeições para um dia da semana específico, definido pelo `weekday`.
     /// O tipo da refeição segue o seguinte padrão:
     /// * `Some(menu_type)`: Mostra apenas as refeições de um tipo especificado.
     /// * `None`: Mostra todas as refeições.
+    ///
+    /// O parâmetro de configuração `config` define quais restaurantes devem ser exibidos (e com quais cores).
     async fn menus_by_day(
         &mut self,
-        restaurant_codes: &Vec<RestaurantCode>,
         menu_type: &Option<MenuType>,
         weekday: Weekday,
+        config: &Config,
     ) {
         let weekday_name = WEEKDAY_NAMES[weekday.num_days_from_monday() as usize];
 
-        Display::title(weekday_name.to_string(), 0);
+        print_header!(H1, weekday_name, COLOR_WEEK_DAY);
 
         if let Some(menu_type) = menu_type {
-            self.menus_by_type(restaurant_codes, menu_type, weekday)
-                .await;
+            self.menus_by_type(menu_type, weekday, config).await;
         } else {
-            self.menus_by_type(restaurant_codes, &MenuType::Lunch, weekday)
-                .await;
-            self.menus_by_type(restaurant_codes, &MenuType::Dinner, weekday)
-                .await;
+            self.menus_by_type(&MenuType::Lunch, weekday, config).await;
+            self.menus_by_type(&MenuType::Dinner, weekday, config).await;
         }
     }
 
-    /// Mostra todas as refeições dos restaurantes em `restaurant_codes` para os dias da semana pedidos.
+    /// Mostra todas os cardápios que devem ser exibidos a partir dos parâmetros.
     /// Os parâmetros `menu_type` e `weekday` seguem o seguinte padrão:
     /// * `menu_type`: Tipo de refeição a ser exibido.
     ///     * `Some(menu_type)`: Mostra apenas as refeições do tipo especificado.
@@ -169,21 +183,19 @@ impl Display {
     /// * `weekday`: Dia da semana a ser exibido.
     ///     * `Some(weekday)`: Mostra apenas as refeições do dia especificado.
     ///     * `None`: Mostra todas as refeições da semana.
+    ///
+    /// O parâmetro de configuração `config` define quais restaurantes devem ser exibidos (e com quais corer).
     pub async fn all_menus(
         &mut self,
-        restaurant_codes: Vec<RestaurantCode>,
         weekday: Option<Weekday>,
         menu_type: Option<MenuType>,
+        config: &Config,
     ) {
-        Display::logo(true);
-
         if let Some(weekday) = weekday {
-            self.menus_by_day(&restaurant_codes, &menu_type, weekday)
-                .await;
+            self.menus_by_day(&menu_type, weekday, config).await;
         } else {
             for weekday in WEEKDAYS {
-                self.menus_by_day(&restaurant_codes, &menu_type, weekday)
-                    .await;
+                self.menus_by_day(&menu_type, weekday, config).await;
             }
         }
     }
