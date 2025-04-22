@@ -93,7 +93,7 @@ impl Display {
     /// Mostra a logo do Bandex com ou sem cor.
     ///
     /// Referência da fonte: <https://patorjk.com/software/taag/#p=display&f=Doom&t=Bandex>.
-    pub fn logo(with_colors: bool) {
+    pub fn show_logo(with_colors: bool) {
         let reset = Self::RESET;
         let version = env!("CARGO_PKG_VERSION");
 
@@ -121,7 +121,7 @@ impl Display {
     }
 
     /// Mostra um cardápio a partir de uma instancia de `Menu`.
-    fn menu(menu: Menu) {
+    fn show_menu(menu: Menu) {
         if menu.content == "Fechado" {
             println!("   ✘ Fechado");
         } else {
@@ -137,7 +137,12 @@ impl Display {
     /// Mostra uma refeição de um tipo específico `menu_type` (almoço ou jantar) de um dia específico `weekday`.
     ///
     /// O parâmetro de configuração `config` define quais restaurantes devem ser exibidos (e com quais cores).
-    async fn menus_by_type(&mut self, menu_type: &MenuType, weekday: Weekday, config: &Config) {
+    async fn show_menus_by_type(
+        &mut self,
+        menu_type: &MenuType,
+        weekday: Weekday,
+        config: &Config,
+    ) {
         print_header!(H2, menu_type.to_string(), COLOR_MENU_TYPE);
 
         for restaurant in config.restaurants.iter() {
@@ -147,7 +152,7 @@ impl Display {
                 .await
             {
                 print_header!(H3, restaurant_name, restaurant.color);
-                Display::menu(menu);
+                Display::show_menu(menu);
             } else {
                 Display::error_message(format!(
                     "Não foi possível carregar dados desse restaurante (Rest {})",
@@ -163,7 +168,7 @@ impl Display {
     /// * `None`: Mostra todas as refeições.
     ///
     /// O parâmetro de configuração `config` define quais restaurantes devem ser exibidos (e com quais cores).
-    async fn menus_by_day(
+    async fn show_menus_by_day(
         &mut self,
         menu_type: &Option<MenuType>,
         weekday: Weekday,
@@ -174,10 +179,12 @@ impl Display {
         print_header!(H1, weekday_name, COLOR_WEEK_DAY);
 
         if let Some(menu_type) = menu_type {
-            self.menus_by_type(menu_type, weekday, config).await;
+            self.show_menus_by_type(menu_type, weekday, config).await;
         } else {
-            self.menus_by_type(&MenuType::Lunch, weekday, config).await;
-            self.menus_by_type(&MenuType::Dinner, weekday, config).await;
+            self.show_menus_by_type(&MenuType::Lunch, weekday, config)
+                .await;
+            self.show_menus_by_type(&MenuType::Dinner, weekday, config)
+                .await;
         }
     }
 
@@ -191,17 +198,17 @@ impl Display {
     ///     * `None`: Mostra todas as refeições da semana.
     ///
     /// O parâmetro de configuração `config` define quais restaurantes devem ser exibidos (e com quais corer).
-    pub async fn all_menus(
+    pub async fn show_menus(
         &mut self,
         weekday: Option<Weekday>,
         menu_type: Option<MenuType>,
         config: &Config,
     ) {
         if let Some(weekday) = weekday {
-            self.menus_by_day(&menu_type, weekday, config).await;
+            self.show_menus_by_day(&menu_type, weekday, config).await;
         } else {
             for weekday in WEEKDAYS {
-                self.menus_by_day(&menu_type, weekday, config).await;
+                self.show_menus_by_day(&menu_type, weekday, config).await;
             }
         }
     }

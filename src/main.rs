@@ -20,7 +20,7 @@ mod types;
 async fn main() -> Result<(), Error> {
     let mut display = Display::new();
 
-    Display::logo(true);
+    Display::show_logo(true);
 
     let (menu_type, weekday, config_filepath) = cli()?;
 
@@ -35,6 +35,6 @@ async fn main() -> Result<(), Error> {
         }),
     };
 
-    display.all_menus(weekday, menu_type, &config).await;
+    display.show_menus(weekday, menu_type, &config).await;
     Ok(())
 }
