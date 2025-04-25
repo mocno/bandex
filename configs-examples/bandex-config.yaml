@@ -23,3 +23,19 @@ bandex:
     # Restaurante Central
     - id: &RESTAURANT_CENTRAL 6
       color: yellow
+
+  foods:
+    # Comidas gostadas
+    # - brigadeiro e pudim
+    # - barra de cereais (só é gostada no central)
+    liked:
+      - brigadeiro
+      - pudim
+      - barra de cereais: [*RESTAURANT_CENTRAL]
+
+    # Comidas não gostadas
+    # - acelga
+    # - pvt (só não é gostada na física e na prefeitura)
+    disliked:
+      - pvt: [*RESTAURANT_FISICA, *RESTAURANT_PREFEITURA]
+      - acelga
