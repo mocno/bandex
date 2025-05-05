@@ -10,9 +10,9 @@ estiver inválido, serão utilizadas as configurações padrão.
 */
 
 use std::{
-    fs,
+    env, fs,
     io::{Error, ErrorKind},
-    path::Path,
+    path::{Path, PathBuf},
     vec::Vec,
 };
 
@@ -35,6 +35,9 @@ const DEFAULT_RESTAURANTS: [(RestaurantCode, Color); 4] = [
 
 /// Cor padrão dos restaurantes.
 const DEFAULT_COLOR: Color = Color::White;
+
+/// Variável de ambiente para o arquivo de configuração.
+const ENV_VAR_BANDEX_CONFIG: &str = "BANDEX_CONFIG_FILE";
 
 /// Macro para converter um valor em uma string YAML.
 macro_rules! to_yaml_str {
@@ -305,6 +308,13 @@ impl Config {
 
         Config::from_file_content(&contents)
     }
+}
+
+/// Lê o caminho de configuração do bandex a partir de uma variável de ambiente.
+pub fn read_env_config_filepath() -> Option<PathBuf> {
+    env::var(ENV_VAR_BANDEX_CONFIG)
+        .ok()
+        .map(|path| PathBuf::from(path))
 }
 
 #[cfg(test)]

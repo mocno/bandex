@@ -120,7 +120,7 @@ dependencies = [
 
 [[package]]
 name = "bandex"
-version = "2.1.4-alpha"
+version = "2.1.5-alpha"
 dependencies = [
  "chrono",
  "clap",

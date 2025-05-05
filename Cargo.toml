@@ -1,6 +1,6 @@
 [package]
 name = "bandex"
-version = "2.1.4-alpha"
+version = "2.1.5-alpha"
 edition = "2021"
 authors = ["Mocno <gustavo.correa.mogi@gmail.com>"]
 description = "Mostra o cardápio dos restaurantes da USP"

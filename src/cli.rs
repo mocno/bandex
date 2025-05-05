@@ -16,7 +16,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::types::MenuType;
+use crate::{config::read_env_config_filepath, types::MenuType};
 use chrono::{Datelike, Local, NaiveTime, Weekday};
 use clap::Parser;
 
@@ -98,7 +98,7 @@ fn get_menu_type_by_datetime(time: NaiveTime) -> Option<MenuType> {
 /// - O dia da semana escolhido:
 ///     - `Some(weekday)`: se o usuário especificou um dia
 ///     - `None`: se o usuário não quer todos os dias da semana
-pub fn cli() -> Result<(Option<MenuType>, Option<Weekday>, Option<PathBuf>), Error> {
+pub fn parse_cli() -> Result<(Option<MenuType>, Option<Weekday>, Option<PathBuf>), Error> {
     let cli = Cli::parse();
 
     if cli.weekday != None && cli.everything {
@@ -123,7 +123,9 @@ pub fn cli() -> Result<(Option<MenuType>, Option<Weekday>, Option<PathBuf>), Err
         (true, _) => None,
     };
 
-    Ok((menu_type, weekday, cli.config))
+    let config_filepath = cli.config.or_else(read_env_config_filepath);
+
+    Ok((menu_type, weekday, config_filepath))
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
-use std::{env, io::Error, path::PathBuf};
+use std::io::Error;
 
-use cli::cli;
+use cli::parse_cli;
 use config::Config;
 use display::Display;
 
@@ -10,8 +10,6 @@ mod display;
 mod parse_dwr;
 mod request;
 mod types;
-
-const ENV_VAR_BANDEX_CONFIG: &str = "BANDEX_CONFIG_FILE";
 
 /// Função que orquestra a execução do programa
 ///
@@ -24,13 +22,7 @@ async fn main() -> Result<(), Error> {
 
     Display::show_logo(true);
 
-    let (menu_type, weekday, config_filepath) = cli()?;
-
-    let config_filepath = config_filepath.or_else(|| {
-        env::var(ENV_VAR_BANDEX_CONFIG)
-            .ok()
-            .map(|path| PathBuf::from(path))
-    });
+    let (menu_type, weekday, config_filepath) = parse_cli()?;
 
     let config = match config_filepath {
         None => Config::default(),
