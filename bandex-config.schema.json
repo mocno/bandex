@@ -61,10 +61,77 @@
             "required": ["id"],
             "additionalProperties": false
           }
+        },
+        "foods": {
+          "title": "Configuração dos Alimentos",
+          "type": "object",
+          "properties": {
+            "liked": {
+              "title": "Alimentos Favoritos",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "title": "Alimento gostado",
+                    "type": "string"
+                  },
+                  {
+                    "title": "Alimento gostado em certos restaurantes",
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 1,
+                    "patternProperties": {
+                      ".*": {
+                        "type": "array",
+                        "items": {
+                          "title": "ID do restaurante",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "minItems": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "disliked": {
+              "title": "Alimentos não gostados",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "title": "Alimento não gostado",
+                    "type": "string"
+                  },
+                  {
+                    "title": "Alimento não gostado em certos restaurantes",
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 1,
+                    "patternProperties": {
+                      ".*": {
+                        "type": "array",
+                        "items": {
+                          "title": "ID do restaurante",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "minItems": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": ["restaurants"]
     }
-  },
-  "required": ["bandex"]
+  }
 }

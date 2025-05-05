@@ -15,3 +15,27 @@ bandex:
     # Restaurante de São Carlos - campos 2
     - id: &RESTAURANT_SC_2 3
       color: blue # por nome
+
+  # Configurações dos pratos:
+  #
+  # Aqui vamos definir quais pratos são gostados ou não gostados. Simplesmente
+  # escreva uma lista de alimentos gostados (liked) e não gostados (disliked) -
+  # se quiser, pode comidas gostadas e não gostadas em restaurantes específicos.
+  foods:
+    # Comidas gostadas
+    # - brigadeiro e pudim
+    # - bananada e barra de cereais (só é gostada no campus 1)
+    liked:
+      - brigadeiro
+      - pudim
+      - bananada: [*RESTAURANT_SC_1]
+      # Também podemos escrever assim
+      - barra de cereais:
+          - *RESTAURANT_SC_1
+
+    # Comidas não gostadas
+    # - acelga
+    # - pvt (só não é gostada no restaurante do campus 2)
+    disliked:
+      - pvt: [*RESTAURANT_SC_2]
+      - acelga

@@ -6,7 +6,7 @@ Este módulo contém estruturas e funções para exibir informações do Bandex.
 
 use crate::{
     config::Config,
-    types::{Menu, MenuType, MenusCache},
+    types::{Menu, MenuType, MenusCache, RestaurantCode},
 };
 use chrono::Weekday;
 use colored::{Color, Colorize};
@@ -121,15 +121,39 @@ impl Display {
     }
 
     /// Mostra um cardápio a partir de uma instancia de `Menu`.
-    fn show_menu(menu: Menu) {
+    pub fn show_menu(menu: Menu, restaurant_code: RestaurantCode, config: &Config) {
         if menu.content == "Fechado" {
             println!("   ✘ Fechado");
         } else {
-            println!("\n   ➤  {}", menu.content.replace("\n", "\n   ➤  "));
+            for line in menu.content.split("\n") {
+                if line.is_empty() {
+                    continue;
+                }
+
+                let liked = config
+                    .liked_foods
+                    .iter()
+                    .any(|food_config| food_config.check_line(line, restaurant_code as u64));
+                let disliked = config
+                    .disliked_foods
+                    .iter()
+                    .any(|food_config| food_config.check_line(line, restaurant_code as u64));
+
+                if liked {
+                    println!("   ✔  {}", line.green());
+                } else if disliked {
+                    println!("   ✘  {}", line.red());
+                } else {
+                    println!("   ➤  {}", line);
+                }
+            }
+
             if let Some(calorific_value) = menu.calorific_value {
                 println!("\n     Valor energético: {} kcal", calorific_value);
             }
-            println!("\n### Observação: {} ###", menu.observation);
+            if !menu.observation.is_empty() {
+                println!("\n### Observação: {} ###", menu.observation);
+            }
         }
         println!();
     }
@@ -152,7 +176,7 @@ impl Display {
                 .await
             {
                 print_header!(H3, restaurant_name, restaurant.color);
-                Display::show_menu(menu);
+                Display::show_menu(menu, restaurant.id, config);
             } else {
                 Display::error_message(format!(
                     "Não foi possível carregar dados desse restaurante (Rest {})",

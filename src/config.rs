@@ -56,8 +56,11 @@ impl RestaurantConfig {
     }
 }
 
-impl RestaurantConfig {
-    pub fn parse(value: &Yaml) -> Result<Self, Error> {
+impl TryFrom<&Yaml> for RestaurantConfig {
+    type Error = Error;
+
+    // Tenta ler as configurações dos restaurantes a partir de um YAML
+    fn try_from(value: &Yaml) -> Result<Self, Self::Error> {
         let Some(restaurant_config) = value.as_hash() else {
             return Err(Error::new(
                 ErrorKind::InvalidData,
@@ -96,12 +99,88 @@ impl RestaurantConfig {
     }
 }
 
+/// Representa uma configuração de uma comida - relacionando uma comida com um
+/// ou alguns restaurantes
+#[derive(Debug)]
+pub struct FoodConfig {
+    pub name: String,
+    pub restaurants: Option<Vec<u64>>,
+}
+
+impl FoodConfig {
+    pub fn new(name: String, restaurants: Option<Vec<u64>>) -> Self {
+        FoodConfig { name, restaurants }
+    }
+}
+
+impl TryFrom<&Yaml> for FoodConfig {
+    type Error = Error;
+
+    // Tenta ler as configurações das comidas a partir de um YAML
+    fn try_from(yaml: &Yaml) -> Result<Self, Self::Error> {
+        match yaml {
+            Yaml::String(value) => Ok(FoodConfig::new(value.clone(), None)),
+            Yaml::Hash(value) if value.len() == 1 => {
+                let (key, value) = value.iter().next().unwrap();
+
+                let Some(key) = key.as_str() else {
+                    return Err(Error::new(ErrorKind::InvalidData, "Comida inválida"));
+                };
+                let Some(restaurants) = value.as_vec() else {
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "Restaurante das comidas inválida",
+                    ));
+                };
+                let mut restaurants_ids = Vec::new();
+                for restaurant in restaurants {
+                    let Some(restaurant_id) = restaurant.as_i64() else {
+                        return Err(Error::new(
+                            ErrorKind::InvalidData,
+                            "Restaurante das comidas inválida",
+                        ));
+                    };
+                    restaurants_ids.push(restaurant_id as u64);
+                }
+
+                Ok(FoodConfig::new(key.to_lowercase(), Some(restaurants_ids)))
+            }
+            _ => Err(Error::new(
+                ErrorKind::InvalidData,
+                "Comida com formato inválido",
+            )),
+        }
+    }
+}
+
+impl FoodConfig {
+    /// Verifica se uma linha contém o nome da comida.
+    pub fn check_line(&self, line: &str, restaurant_code: u64) -> bool {
+        let restaurant_match = if let Some(restaurants) = &self.restaurants {
+            restaurants.contains(&restaurant_code)
+        } else {
+            true
+        };
+
+        let line_match = line.to_lowercase().contains(&self.name);
+
+        restaurant_match && line_match
+    }
+}
+
 /// Configurações do Bandex - um objeto criado a partir de um arquivo YAML.
 ///
 /// Essa estrutura contém as configurações do Bandex, incluindo informações sobre os restaurantes.
 #[derive(Debug)]
 pub struct Config {
+    /// Lista dos restaurantes que serão apresentados.
     pub restaurants: Vec<RestaurantConfig>,
+
+    /// Lista das comidas favoritas.
+    pub liked_foods: Vec<FoodConfig>,
+
+    /// Lista das comidas não gostadas.
+    pub disliked_foods: Vec<FoodConfig>,
 }
 
 /// Extrai objetos YAML a partir do conteúdo do arquivo YAML.
@@ -123,7 +202,11 @@ impl Default for Config {
             })
             .collect();
 
-        Config { restaurants }
+        Config {
+            restaurants,
+            liked_foods: vec![],
+            disliked_foods: vec![],
+        }
     }
 }
 
@@ -138,6 +221,21 @@ impl Config {
         bandex_config.get(to_yaml_str!("restaurants"))?.as_vec()
     }
 
+    /// Extrai os alimentos, em yaml, da configuração do bandex.
+    fn get_foods_yaml(bandex_config: &yaml::Hash) -> Option<&yaml::Hash> {
+        bandex_config.get(to_yaml_str!("foods"))?.as_hash()
+    }
+
+    /// Extrai os alimentos favoritos, em yaml, da configuração do bandex.
+    fn get_liked_foods_yaml(foods_config: &yaml::Hash) -> Option<&yaml::Array> {
+        foods_config.get(to_yaml_str!("liked"))?.as_vec()
+    }
+
+    /// Extrai os alimentos não gostados, em yaml, da configuração do bandex.
+    fn get_disliked_foods_yaml(foods_config: &yaml::Hash) -> Option<&yaml::Array> {
+        foods_config.get(to_yaml_str!("disliked"))?.as_vec()
+    }
+
     /// Extrai as configurações a partir do conteúdo do arquivo YAML.
     pub fn from_file_content(contents: &str) -> Result<Config, Error> {
         let docs = parse_yaml_from_content(contents)?;
@@ -150,19 +248,37 @@ impl Config {
         }
 
         let mut restaurants = Vec::new();
+        let mut liked_foods = Vec::new();
+        let mut disliked_foods = Vec::new();
 
         for doc in docs {
             let Some(bandex_config) = Self::get_bandex_yaml(&doc) else {
                 continue;
             };
 
-            let Some(restaurants_config) = Self::get_restaurants_yaml(bandex_config) else {
-                continue;
-            };
+            if let Some(restaurants_config) = Self::get_restaurants_yaml(bandex_config) {
+                for restaurant_yaml in restaurants_config {
+                    if let Ok(restaurant) = RestaurantConfig::try_from(restaurant_yaml) {
+                        restaurants.push(restaurant);
+                    }
+                }
+            }
 
-            for restaurant_yaml in restaurants_config {
-                let restaurant = RestaurantConfig::parse(restaurant_yaml)?;
-                restaurants.push(restaurant);
+            if let Some(foods_config) = Self::get_foods_yaml(bandex_config) {
+                if let Some(liked) = Self::get_liked_foods_yaml(foods_config) {
+                    for food_yaml in liked {
+                        if let Ok(food) = FoodConfig::try_from(food_yaml) {
+                            liked_foods.push(food);
+                        }
+                    }
+                }
+                if let Some(disliked) = Self::get_disliked_foods_yaml(foods_config) {
+                    for food_yaml in disliked {
+                        if let Ok(food) = FoodConfig::try_from(food_yaml) {
+                            disliked_foods.push(food);
+                        }
+                    }
+                }
             }
         }
 
@@ -173,7 +289,11 @@ impl Config {
             ));
         }
 
-        Ok(Config { restaurants })
+        Ok(Config {
+            restaurants,
+            liked_foods,
+            disliked_foods,
+        })
     }
 
     /// Extrai a configuração do bandex a partir de um arquivo YAML.
@@ -199,6 +319,129 @@ mod tests {
     }
 
     #[test]
+    fn test_new_restaurant_config() {
+        let id: RestaurantCode = 338;
+        let color = Color::TrueColor {
+            r: 187,
+            g: 35,
+            b: 51,
+        };
+        let restaurant = RestaurantConfig::new(id, color);
+
+        assert_eq!(restaurant.id, id);
+        assert_eq!(restaurant.color, color);
+    }
+
+    #[test]
+    fn test_restaurant_config_parse() {
+        // without color
+        let values = parse_yaml_from_content("id: 2").unwrap();
+        let value = values.first().unwrap();
+        let restaurant = RestaurantConfig::try_from(value);
+
+        assert!(restaurant.is_ok());
+
+        let restaurant = restaurant.unwrap();
+        assert_eq!(restaurant.id, 2);
+        assert_eq!(restaurant.color, DEFAULT_COLOR);
+
+        // name color
+        let values = parse_yaml_from_content("color: BluE\nid: 6").unwrap();
+        let value = values.first().unwrap();
+        let restaurant = RestaurantConfig::try_from(value);
+
+        assert!(restaurant.is_ok());
+
+        let restaurant = restaurant.unwrap();
+        assert_eq!(restaurant.id, 6);
+        assert_eq!(restaurant.color, Color::Blue);
+
+        // RGB color
+        let values = parse_yaml_from_content("id: 12\ncolor: [187, 35, 51]").unwrap();
+        let value = values.first().unwrap();
+        let restaurant = RestaurantConfig::try_from(value);
+
+        assert!(restaurant.is_ok());
+
+        let restaurant = restaurant.unwrap();
+        assert_eq!(restaurant.id, 12);
+        assert_eq!(
+            restaurant.color,
+            Color::TrueColor {
+                r: 187,
+                g: 35,
+                b: 51
+            }
+        );
+
+        // Test Errors
+        let values = parse_yaml_from_content("color: [187, 35, 51]").unwrap();
+        let value = values.first().unwrap();
+        let restaurant = RestaurantConfig::try_from(value);
+
+        assert!(restaurant.is_err());
+
+        let values = parse_yaml_from_content("id: \"12\"\ncolor: blue").unwrap();
+        let value = values.first().unwrap();
+        let restaurant = RestaurantConfig::try_from(value);
+
+        assert!(restaurant.is_err());
+
+        let values = parse_yaml_from_content("id: 89\ncolor: not a color").unwrap();
+        let value = values.first().unwrap();
+        let restaurant = RestaurantConfig::try_from(value);
+
+        assert!(restaurant.is_err());
+    }
+
+    #[test]
+    fn test_new_food_config() {
+        let food_config = FoodConfig::new("pizza".to_string(), Some(vec![1, 2, 3]));
+        assert_eq!(food_config.name, "pizza");
+        assert_eq!(food_config.restaurants, Some(vec![1, 2, 3]));
+
+        let food_config = FoodConfig::new("feijoada".to_string(), None);
+        assert_eq!(food_config.name, "feijoada");
+        assert_eq!(food_config.restaurants, None);
+    }
+
+    #[test]
+    fn test_food_config_from_yaml() {
+        let values = parse_yaml_from_content("pizza").unwrap();
+        let value = values.first().unwrap();
+        let food_config = FoodConfig::try_from(value);
+
+        assert!(food_config.is_ok());
+
+        let food_config = food_config.unwrap();
+        assert_eq!(food_config.name, "pizza");
+        assert_eq!(food_config.restaurants, None);
+
+        let values = parse_yaml_from_content("feijoada: [1, 2, 3]").unwrap();
+        let value = values.first().unwrap();
+        let food_config = FoodConfig::try_from(value);
+
+        assert!(food_config.is_ok());
+
+        let food_config = food_config.unwrap();
+        assert_eq!(food_config.name, "feijoada");
+        assert_eq!(food_config.restaurants, Some(vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn test_check_line_config() {
+        let food_config = FoodConfig::new("pizza".to_string(), None);
+
+        assert!(food_config.check_line("pizza de feijoada com arroz", 12));
+        assert!(!food_config.check_line("feijoada com arroz", 11));
+
+        let food_config = FoodConfig::new("feijoada".to_string(), Some(vec![1, 2, 3]));
+
+        assert!(!food_config.check_line("feijoada com arroz", 4));
+        assert!(food_config.check_line("feijoada com arroz", 1));
+    }
+
+    #[test]
     fn test_parse_yaml_from_content() {
         let docs = parse_yaml_from_content("key: value");
         assert!(docs.is_ok());
@@ -218,87 +461,11 @@ mod tests {
     }
 
     #[test]
-    fn test_new_restaurant_config() {
-        let id: RestaurantCode = 338;
-        let color = Color::TrueColor {
-            r: 187,
-            g: 35,
-            b: 51,
-        };
-        let restaurant = RestaurantConfig::new(id, color);
-
-        assert_eq!(restaurant.id, id);
-        assert_eq!(restaurant.color, color);
-    }
-
-    #[test]
-    fn test_restaurant_config_parse() {
-        // without color
-        let values = parse_yaml_from_content("id: 2").unwrap();
-        let value = values.first().unwrap();
-        let restaurant = RestaurantConfig::parse(value);
-
-        assert!(restaurant.is_ok());
-
-        let restaurant = restaurant.unwrap();
-        assert_eq!(restaurant.id, 2);
-        assert_eq!(restaurant.color, DEFAULT_COLOR);
-
-        // name color
-        let values = parse_yaml_from_content("color: BluE\nid: 6").unwrap();
-        let value = values.first().unwrap();
-        let restaurant = RestaurantConfig::parse(value);
-
-        assert!(restaurant.is_ok());
-
-        let restaurant = restaurant.unwrap();
-        assert_eq!(restaurant.id, 6);
-        assert_eq!(restaurant.color, Color::Blue);
-
-        // RGB color
-        let values = parse_yaml_from_content("id: 12\ncolor: [187, 35, 51]").unwrap();
-        let value = values.first().unwrap();
-        let restaurant = RestaurantConfig::parse(value);
-
-        assert!(restaurant.is_ok());
-
-        let restaurant = restaurant.unwrap();
-        assert_eq!(restaurant.id, 12);
-        assert_eq!(
-            restaurant.color,
-            Color::TrueColor {
-                r: 187,
-                g: 35,
-                b: 51
-            }
-        );
-
-        // Test Errors
-        let values = parse_yaml_from_content("color: [187, 35, 51]").unwrap();
-        let value = values.first().unwrap();
-        let restaurant = RestaurantConfig::parse(value);
-
-        assert!(restaurant.is_err());
-
-        let values = parse_yaml_from_content("id: \"12\"\ncolor: blue").unwrap();
-        let value = values.first().unwrap();
-        let restaurant = RestaurantConfig::parse(value);
-
-        assert!(restaurant.is_err());
-
-        let values = parse_yaml_from_content("id: 89\ncolor: not a color").unwrap();
-        let value = values.first().unwrap();
-        let restaurant = RestaurantConfig::parse(value);
-
-        assert!(restaurant.is_err());
-    }
-
-    #[test]
     fn test_default_config() {
         let config = Config::default();
 
         assert!(!config.restaurants.is_empty());
-        assert!(config.restaurants.len() == DEFAULT_RESTAURANTS.len());
+        assert_eq!(config.restaurants.len(), DEFAULT_RESTAURANTS.len());
     }
 
     #[test]
@@ -314,7 +481,7 @@ mod tests {
         let value = values.first().unwrap();
         let config = Config::get_bandex_yaml(value);
 
-        assert!(config.is_none());
+        assert_eq!(config, None);
     }
 
     #[test]
@@ -324,13 +491,61 @@ mod tests {
         let restaurant = Config::get_restaurants_yaml(value);
 
         assert!(restaurant.is_some());
-        assert!(restaurant.unwrap().len() == 2);
+        assert_eq!(restaurant.unwrap().len(), 2);
 
         let values = parse_yaml_from_content("restaurants:\n  1").unwrap();
         let value = values.first().unwrap().as_hash().unwrap();
         let restaurant = Config::get_restaurants_yaml(value);
 
         assert_eq!(restaurant, None);
+    }
+
+    #[test]
+    fn test_get_foods_yaml() {
+        let values = parse_yaml_from_content("foods:\n  liked: [bom]\n  disliked: [ruim]").unwrap();
+        let value = values.first().unwrap().as_hash().unwrap();
+        let config = Config::get_foods_yaml(value);
+
+        assert!(config.is_some());
+        assert_eq!(config.unwrap().len(), 2);
+
+        let values = parse_yaml_from_content("restaurants:\n  - id: 1").unwrap();
+        let value = values.first().unwrap().as_hash().unwrap();
+        let config = Config::get_foods_yaml(value);
+
+        assert_eq!(config, None);
+    }
+
+    #[test]
+    fn test_get_liked_foods() {
+        let values = parse_yaml_from_content("liked: [bom, muito bom]\ndisliked: [ruim]").unwrap();
+        let value = values.first().unwrap().as_hash().unwrap();
+        let config = Config::get_liked_foods_yaml(value);
+
+        assert!(config.is_some());
+        assert_eq!(config.unwrap().len(), 2);
+
+        let values = parse_yaml_from_content("disliked: [ruim]").unwrap();
+        let value = values.first().unwrap().as_hash().unwrap();
+        let config = Config::get_liked_foods_yaml(value);
+
+        assert_eq!(config, None);
+    }
+
+    #[test]
+    fn test_get_disliked_foods() {
+        let values = parse_yaml_from_content("liked: [bom]\ndisliked: [ruim, muito_ruim]").unwrap();
+        let value = values.first().unwrap().as_hash().unwrap();
+        let config = Config::get_disliked_foods_yaml(value);
+
+        assert!(config.is_some());
+        assert_eq!(config.unwrap().len(), 2);
+
+        let values = parse_yaml_from_content("liked: [bom]").unwrap();
+        let value = values.first().unwrap().as_hash().unwrap();
+        let config = Config::get_disliked_foods_yaml(value);
+
+        assert_eq!(config, None);
     }
 
     #[test]

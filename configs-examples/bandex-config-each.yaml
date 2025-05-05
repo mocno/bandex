@@ -11,3 +11,21 @@ bandex:
     # Restaurante da EACH
     - id: &RESTAURANT_EACH 13
       color: red
+
+  # Configurações dos pratos:
+  #
+  # Aqui vamos definir quais pratos são gostados ou não gostados. Simplesmente
+  # escreva uma lista de alimentos gostados (liked) e não gostados (disliked) -
+  # se quiser, pode comidas gostadas e não gostadas em restaurantes específicos
+  # (veja outros exemplos).
+  foods:
+    # Comidas gostadas
+    # - brigadeiro e pudim
+    liked:
+      - brigadeiro
+      - pudim
+
+    # Comidas não gostadas
+    # - acelga
+    disliked:
+      - acelga
