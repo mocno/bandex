@@ -19,14 +19,14 @@ use std::{
 use colored::Color;
 use yaml_rust::{yaml, Yaml, YamlLoader};
 
-use crate::types::RestaurantCode;
+use crate::types::RestaurantID;
 
 /// Padrão para configuração dos restaurantes, definido com os bandeijões da USP São Paulo.
 /// * 8: Restaurante da Física
 /// * 7: Restaurante das Química
 /// * 9: Restaurante da Prefeitura
 /// * 6: Restaurante Central
-const DEFAULT_RESTAURANTS: [(RestaurantCode, Color); 4] = [
+const DEFAULT_RESTAURANTS: [(RestaurantID, Color); 4] = [
     (8, Color::Blue),
     (7, Color::Blue),
     (9, Color::Blue),
@@ -49,12 +49,12 @@ macro_rules! to_yaml_str {
 /// Configurações de um restaurante como cor e ID.
 #[derive(Debug, PartialEq)]
 pub struct RestaurantConfig {
-    pub id: RestaurantCode,
+    pub id: RestaurantID,
     pub color: Color,
 }
 
 impl RestaurantConfig {
-    pub fn new(id: RestaurantCode, color: Color) -> Self {
+    pub fn new(id: RestaurantID, color: Color) -> Self {
         RestaurantConfig { id, color }
     }
 }
@@ -158,9 +158,9 @@ impl TryFrom<&Yaml> for FoodConfig {
 
 impl FoodConfig {
     /// Verifica se uma linha contém o nome da comida.
-    pub fn check_line(&self, line: &str, restaurant_code: u64) -> bool {
+    pub fn check_line(&self, line: &str, restaurant_id: u64) -> bool {
         let restaurant_match = if let Some(restaurants) = &self.restaurants {
-            restaurants.contains(&restaurant_code)
+            restaurants.contains(&restaurant_id)
         } else {
             true
         };
@@ -330,7 +330,7 @@ mod tests {
 
     #[test]
     fn test_new_restaurant_config() {
-        let id: RestaurantCode = 338;
+        let id: RestaurantID = 338;
         let color = Color::TrueColor {
             r: 187,
             g: 35,

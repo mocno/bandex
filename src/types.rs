@@ -6,7 +6,7 @@ use chrono::Weekday;
 use std::collections::HashMap;
 
 /// ID do restaurate
-pub type RestaurantCode = usize;
+pub type RestaurantID = usize;
 
 /// Tipos de refeição
 #[derive(Debug, PartialEq, Clone)]
@@ -49,8 +49,8 @@ pub struct Menu {
 /// Cache para as refeições e os nomes dos restaurantes
 #[derive(Debug)]
 pub struct MenusCache {
-    menus: HashMap<RestaurantCode, Vec<Menu>>,
-    names: HashMap<RestaurantCode, String>,
+    menus: HashMap<RestaurantID, Vec<Menu>>,
+    names: HashMap<RestaurantID, String>,
 }
 
 impl MenusCache {
@@ -61,30 +61,30 @@ impl MenusCache {
         }
     }
 
-    pub async fn search(&mut self, restaurant_code: RestaurantCode) {
-        if let Some(menus) = parse_dwr::get_menus(restaurant_code).await {
-            if let Some(name) = parse_dwr::get_restaurant_name(restaurant_code).await {
-                self.menus.insert(restaurant_code, menus);
-                self.names.insert(restaurant_code, name);
+    pub async fn search(&mut self, restaurant_id: RestaurantID) {
+        if let Some(menus) = parse_dwr::get_menus(restaurant_id).await {
+            if let Some(name) = parse_dwr::get_restaurant_name(restaurant_id).await {
+                self.menus.insert(restaurant_id, menus);
+                self.names.insert(restaurant_id, name);
             };
         };
     }
 
     pub async fn get_name_and_menu(
         &mut self,
-        restaurant_code: RestaurantCode,
+        restaurant_id: RestaurantID,
         menu_type: &MenuType,
         weekday: Weekday,
     ) -> Option<(String, Menu)> {
-        if !self.menus.contains_key(&restaurant_code) {
-            self.search(restaurant_code).await;
+        if !self.menus.contains_key(&restaurant_id) {
+            self.search(restaurant_id).await;
         }
 
-        let menus = self.menus.get(&restaurant_code)?;
+        let menus = self.menus.get(&restaurant_id)?;
 
         for menu in menus {
             if menu.weekday == weekday && &menu.menu_type == menu_type {
-                let name = self.names.get(&restaurant_code)?;
+                let name = self.names.get(&restaurant_id)?;
                 return Some((name.clone(), menu.clone()));
             }
         }
@@ -96,7 +96,7 @@ impl MenusCache {
 #[cfg(test)]
 mod tests {
     /// ID do restaurante Central
-    const RESTAURANT_CENTRAL: RestaurantCode = 6;
+    const RESTAURANT_CENTRAL: RestaurantID = 6;
 
     use super::*;
 

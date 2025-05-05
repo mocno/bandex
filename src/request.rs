@@ -11,7 +11,7 @@ As funções disponíveis permitem:
 Todas as funções retornam o conteúdo da requisição ou um erro de requisição `reqwest::Error`.
 */
 
-use crate::types::RestaurantCode;
+use crate::types::RestaurantID;
 use reqwest;
 
 /// URL para obter o nome do restaurante
@@ -21,8 +21,8 @@ const GET_RESTAURANT_NAME_URL: &str = "https://uspdigital.usp.br/rucard/dwr/call
 const GET_MENU_URL: &str = "https://uspdigital.usp.br/rucard/dwr/call/plaincall/CardapioControleDWR.obterCardapioRestUSP.dwr";
 
 /// Função faz a requisição para obterRestauranteUsp
-pub async fn request_rest_name(code: RestaurantCode) -> Result<String, reqwest::Error> {
-    let c0_param0 = format!("string:{code}");
+pub async fn request_rest_name(restaurant_id: RestaurantID) -> Result<String, reqwest::Error> {
+    let c0_param0 = format!("string:{restaurant_id}");
     let params = [
         ("page", ""),
         ("windowName", ""),
@@ -51,8 +51,8 @@ pub async fn request_rest_name(code: RestaurantCode) -> Result<String, reqwest::
 }
 
 /// Função faz a requisição para obterCardapioRestUSP
-pub async fn request_menu(code: RestaurantCode) -> Result<String, reqwest::Error> {
-    let c0_param0 = format!("string:{code}");
+pub async fn request_menu(restaurant_id: RestaurantID) -> Result<String, reqwest::Error> {
+    let c0_param0 = format!("string:{restaurant_id}");
     let params = [
         ("page", ""),
         ("windowName", ""),
@@ -83,7 +83,7 @@ pub async fn request_menu(code: RestaurantCode) -> Result<String, reqwest::Error
 #[cfg(test)]
 mod test {
     /// ID do restaurante Central
-    const RESTAURANT_CENTRAL: RestaurantCode = 6;
+    const RESTAURANT_CENTRAL: RestaurantID = 6;
 
     use super::*;
 

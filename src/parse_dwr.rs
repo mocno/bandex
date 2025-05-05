@@ -31,7 +31,7 @@ Todas as colunas de dados então presentes nas duas funções (R e C), mas algum
 - `vlrclorfi`: Calor calórico da refeição
 */
 
-use crate::types::{Menu, MenuType, RestaurantCode};
+use crate::types::{Menu, MenuType, RestaurantID};
 use chrono::Weekday;
 use html_escape::decode_html_entities;
 use regex::Regex;
@@ -69,7 +69,6 @@ impl FromDWR for Menu {
 
         let menu_type = get_value_in_dwr_object(object, KEY_MENU_TYPE)?;
         let menu_type = MenuType::from_dwr(menu_type.as_str())?;
-
         let weekday = get_value_in_dwr_object(object, KEY_WEEKDAY_MENU)?;
         let weekday = Weekday::from_dwr(weekday.as_str())?;
 
@@ -139,8 +138,8 @@ fn get_value_in_dwr_object(object: &str, key: &str) -> Option<String> {
 }
 
 /// Extrai o nome do restaurante usando o código do restaurante
-pub async fn get_restaurant_name(code: RestaurantCode) -> Option<String> {
-    let Ok(response) = crate::request::request_rest_name(code).await else {
+pub async fn get_restaurant_name(restaurant_id: RestaurantID) -> Option<String> {
+    let Ok(response) = crate::request::request_rest_name(restaurant_id).await else {
         return None;
     };
 
@@ -152,8 +151,8 @@ pub async fn get_restaurant_name(code: RestaurantCode) -> Option<String> {
 }
 
 /// Extrai os cardápios da semana usando o código de um restaurante
-pub async fn get_menus(code: RestaurantCode) -> Option<Vec<Menu>> {
-    let Ok(response) = crate::request::request_menu(code).await else {
+pub async fn get_menus(restaurant_id: RestaurantID) -> Option<Vec<Menu>> {
+    let Ok(response) = crate::request::request_menu(restaurant_id).await else {
         return None;
     };
 
@@ -174,7 +173,7 @@ pub async fn get_menus(code: RestaurantCode) -> Option<Vec<Menu>> {
 #[cfg(test)]
 mod tests {
     /// ID do restaurante Central
-    const RESTAURANT_CENTRAL: RestaurantCode = 6;
+    const RESTAURANT_CENTRAL: RestaurantID = 6;
 
     use super::*;
 

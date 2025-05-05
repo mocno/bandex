@@ -6,7 +6,7 @@ Este módulo contém estruturas e funções para exibir informações do Bandex.
 
 use crate::{
     config::Config,
-    types::{Menu, MenuType, MenusCache, RestaurantCode},
+    types::{Menu, MenuType, MenusCache, RestaurantID},
 };
 use chrono::Weekday;
 use colored::{Color, Colorize};
@@ -121,7 +121,7 @@ impl Display {
     }
 
     /// Mostra um cardápio a partir de uma instancia de `Menu`.
-    pub fn show_menu(menu: Menu, restaurant_code: RestaurantCode, config: &Config) {
+    pub fn show_menu(menu: Menu, restaurant_id: RestaurantID, config: &Config) {
         if menu.content == "Fechado" {
             println!("   ✘ Fechado");
         } else {
@@ -133,11 +133,11 @@ impl Display {
                 let liked = config
                     .liked_foods
                     .iter()
-                    .any(|food_config| food_config.check_line(line, restaurant_code as u64));
+                    .any(|food_config| food_config.check_line(line, restaurant_id as u64));
                 let disliked = config
                     .disliked_foods
                     .iter()
-                    .any(|food_config| food_config.check_line(line, restaurant_code as u64));
+                    .any(|food_config| food_config.check_line(line, restaurant_id as u64));
 
                 if liked {
                     println!("   ✔  {}", line.green());
